@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm"
+import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from "typeorm"
+import { Section } from "./section.entity"
 
 @Entity({name: "threshold"})
 export class Threshold {
@@ -17,6 +18,7 @@ export class Threshold {
 
     @Column()
     maximumHumidity: number
+
 
 
 }

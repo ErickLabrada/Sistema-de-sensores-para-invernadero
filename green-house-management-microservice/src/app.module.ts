@@ -5,6 +5,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThresholdModule } from './threshold/threshold.module';
 import { Threshold } from './domain/threshold.entity';
 import { ThresholdService } from './threshold/threshold.service';
+import { SectionModule } from './section/section.module';
+import { SensorModule } from './sensor/sensor.module';
+import { GreenhouseModule } from './greenhouse/greenhouse.module';
+import { ManagerModule } from './manager/manager.module';
 
 @Module({
   imports: [
@@ -20,6 +24,10 @@ import { ThresholdService } from './threshold/threshold.service';
       synchronize: true
     }),
     ThresholdModule,
+    SectionModule,
+    SensorModule,
+    GreenhouseModule,
+    ManagerModule,
   ],
   controllers: [AppController],
   providers: [AppService,ThresholdService],

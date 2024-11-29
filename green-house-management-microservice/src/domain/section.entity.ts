@@ -10,8 +10,8 @@ export class Section{
     @Column()
     name: string
 
-    @OneToOne(()=>Threshold)
+    @OneToOne(() => Threshold)
     @JoinColumn()
-    threshold: Threshold
+    threshold: Threshold;
 
 }

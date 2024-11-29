@@ -5,8 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Threshold } from 'src/domain/threshold.entity';
 
 @Module({
-  imports:[TypeOrmModule.forFeature([Threshold]),
-],
+  imports:[TypeOrmModule.forFeature([Threshold]),],
   controllers: [ThresholdController],
   providers: [ThresholdService]
 })
