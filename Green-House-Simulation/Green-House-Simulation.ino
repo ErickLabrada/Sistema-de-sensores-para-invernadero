@@ -1,21 +1,21 @@
+#include <Arduino.h>  // Required for the Serial and hexdump utility
 #include <WiFi.h>
-#include <WebSocketsClient.h>
+#include <SocketIoClient.h>
 
-// Replace with your network credentials
-const char* ssid = "TP-Link_C869";
-const char* password = "48233118";
 
-// Replace with your WebSocket server URL and port
-const char* webSocketServer = "192.168.0.109"; // Use "ws://IP_ADDRESS" for local IP
-const int webSocketPort = 80;  // Use the correct port, default is usually 80 or 8080
+#define BUTTON_PIN 23
+// Set your Wi-Fi credentials here
+const char* ssid = "Totalplay-2.4G-6968";
+const char* password = "FQeJ4UMyNsCWuht9";
 
-// Declare WebSocket client
-WebSocketsClient webSocket;
+// Set the Socket.IO server address and port
+const char* socketIoServer = "192.168.100.18";  // Replace with the actual IP address of the server
+const int socketIoPort = 3000;
 
-// Forward declaration of the sendWebSocketMessage function
-void sendWebSocketMessage(String message);
+SocketIoClient socketIO;
 
-// Define the Manager class
+void sendSocketIoMessage(String event, String message);
+
 class Manager {
 public:
   String name;
@@ -24,28 +24,17 @@ public:
   Manager(String n, String p) : name(n), phone(p) {}
 };
 
-// Define the Threshold class
-class Threshold {
-public:
-  float minTemperature;
-  float maxTemperature;
-  float minHumidity;
-  float maxHumidity;
-
-  Threshold(float minT, float maxT, float minH, float maxH)
-      : minTemperature(minT), maxTemperature(maxT), minHumidity(minH), maxHumidity(maxH) {}
-};
-
-// Define the Section class
 class Section {
 public:
   String sectionName;
-  Threshold threshold;
 
-  Section(String name, Threshold t) : sectionName(name), threshold(t) {}
+  Section(String name) : sectionName(name) {}
+
+  String toString() const {
+    return "Section: " + sectionName;
+  }
 };
 
-// Define the Sensor class
 class Sensor {
 public:
   Section section;
@@ -53,39 +42,73 @@ public:
   bool useCelsius;
 
   Sensor(Section s) : section(s) {
-    // Randomly assign whether to send data in JSON or XML format
-    sendAsJson = random(0, 2); // 0 or 1 for JSON or XML
-    // Randomly assign whether to use Celsius or Fahrenheit
-    useCelsius = random(0, 2); // 0 or 1 for Celsius or Fahrenheit
+    sendAsJson = random(0, 2);  // Randomize data format
+    useCelsius = random(0, 2); // Randomize temperature unit
   }
 
   void captureData() {
-    // Simulating sensor data capture
-    float temperature = random(10, 40);
-    float humidity = random(30, 80);
+    float temperature = random(10, 30); // Temperature in Celsius
+    float humidity = random(20, 60);    // Humidity in percentage
 
-    String tempString = useCelsius ? String(temperature) + "C" : String(temperature * 9.0 / 5.0 + 32) + "F";
+    String tempString = useCelsius ? String(temperature) : String(temperature * 9.0 / 5.0 + 32);
+    String tempUnit = useCelsius ? "C" : "F";
+
     String data;
-
     if (sendAsJson) {
-      // Send data as JSON
-      data = "{\"Temperature\": \"" + tempString + "\", \"Humidity\": \"" + String(humidity) + "%\"}";
+      data = "{"
+             "\"GreenHouse\": {"
+               "\"ID\": \"GH001\","
+               "\"Sensor\": {"
+                 "\"Section\": {"
+                   "\"Name\": \"" + section.sectionName + "\","
+                   "\"Data\": {"
+                     "\"Temperature\": \"" + tempString + "\","
+                     "\"Humidity\": \"" + String(humidity) + "%\","
+                     "\"Temperature_Unit\": \"" + tempUnit + "\""
+                   "}"
+                 "}"
+               "}"
+             "}"
+           "}";
     } else {
-      // Send data as XML
-      data = "<Sensor><Temperature>" + tempString + "</Temperature><Humidity>" + String(humidity) + "%</Humidity></Sensor>";
+      data = "<GreenHouse>"
+               "<ID>GH001</ID>"
+               "<Sensor>"
+                 "<Section>"
+                   "<Name>" + section.sectionName + "</Name>"
+                   "<Data>"
+                     "<Temperature>" + tempString + "</Temperature>"
+                     "<Humidity>" + String(humidity) + "%</Humidity>"
+                     "<Temperature_Unit>" + tempUnit + "</Temperature_Unit>"
+                   "</Data>"
+                 "</Section>"
+               "</Sensor>"
+             "</GreenHouse>";
     }
 
-    // Send the captured data over WebSocket
-    sendWebSocketMessage(data);
+    sendSocketIoMessage("message", data);
+  }
+
+  void captureAlarmingData() {
+    float temperature = random(31, 40);
+    float humidity = random(61, 80);
+
+    String tempString = useCelsius ? String(temperature) : String(temperature * 9.0 / 5.0 + 32);
+    String tempUnit = useCelsius ? "C" : "F";
+
+    String data = "{"
+                  "\"Temperature\": \"" + tempString + "\","
+                  "\"Humidity\": \"" + String(humidity) + "%\""
+                "}";
+    sendSocketIoMessage("Data", data);
   }
 };
 
-// Define the GreenHouse class
 class GreenHouse {
 public:
   String id;
   Manager manager;
-  Sensor* sensors[10]; // Maximum of 10 sensors
+  Sensor* sensors[10];
   int sensorCount;
 
   GreenHouse(String greenhouseId, Manager m) : id(greenhouseId), manager(m), sensorCount(0) {}
@@ -97,58 +120,24 @@ public:
   }
 
   void sendData() {
-    // Capture and send data from all sensors
     for (int i = 0; i < sensorCount; ++i) {
-      sensors[i]->captureData();
+      sensors[i]->captureData(); 
     }
   }
 };
 
-// Declare the GreenHouse objects for 4 different greenhouses
+// Instances of greenhouses
 GreenHouse myGreenHouse1("GH001", Manager("John Doe", "123456789"));
 GreenHouse myGreenHouse2("GH002", Manager("Jane Doe", "987654321"));
-GreenHouse myGreenHouse3("GH003", Manager("Alice Smith", "555123456"));
-GreenHouse myGreenHouse4("GH004", Manager("Bob Johnson", "555987654"));
 
-void sendWebSocketMessage(String message) {
-  if (webSocket.isConnected()) {
-    webSocket.sendTXT(message);
-    Serial.println("Sent message: " + message);
-  } else {
-    Serial.println("WebSocket not connected. Cannot send message.");
-  }
-}
-
-// WebSocket event handler
-void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
-  switch (type) {
-    case WStype_DISCONNECTED:
-      Serial.println("WebSocket Disconnected");
-      break;
-
-    case WStype_CONNECTED:
-      Serial.println("WebSocket Connected");
-      // Send a message once connected
-      webSocket.sendTXT("Connected to WebSocket Server!");
-      break;
-
-    case WStype_TEXT:
-      // Received a message from the server
-      Serial.printf("Received message: %s\n", payload);
-      break;
-
-    case WStype_BIN:
-      // Handle binary data
-      Serial.println("Received binary data");
-      break;
-  }
+void sendSocketIoMessage(String event, String message) {
+  socketIO.emit(event.c_str(), message.c_str());
 }
 
 void setup() {
-  // Initialize Serial Monitor
   Serial.begin(115200);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
 
-  // Connect to Wi-Fi
   WiFi.begin(ssid, password);
   Serial.println("Connecting to WiFi...");
   while (WiFi.status() != WL_CONNECTED) {
@@ -157,52 +146,51 @@ void setup() {
   }
   Serial.println("\nConnected to WiFi!");
 
-  // Initialize WebSocket client
-  webSocket.begin(webSocketServer, webSocketPort, "/"); // "/" is the endpoint, adjust if necessary
+Serial.print("Connecting to WebSocket at: ");
+Serial.print(socketIoServer);
+Serial.print(":");
+Serial.println(socketIoPort);
 
-  // Define event handling for WebSocket
-  webSocket.onEvent(webSocketEvent);
+socketIO.begin(socketIoServer, socketIoPort,"/socket.io/?EIO=4");
+  
+  socketIO.on("connect", [](const char *payload, size_t length) {
+    Serial.println("Socket.IO connected!");
+  });
 
-  // Connect and keep WebSocket alive
-  webSocket.setReconnectInterval(5000);  // Reconnect every 5 seconds if connection is lost
+  socketIO.on("disconnect", [](const char *payload, size_t length) {
+    Serial.println("Socket.IO disconnected!");
+  });
 
-  // Create Threshold, Section, and Sensor objects for each greenhouse
-  Threshold sensorThreshold1(15.0, 30.0, 40.0, 70.0); 
-  Section sensorSection1("Section A", sensorThreshold1);
-  Sensor sensor1(sensorSection1);
+  socketIO.on("message", [](const char *payload, size_t length) {
+    Serial.printf("Message received: %s\n", payload);
+  });
 
-  Threshold sensorThreshold2(10.0, 25.0, 30.0, 60.0);
-  Section sensorSection2("Section B", sensorThreshold2);
-  Sensor sensor2(sensorSection2);
+  Section sectionA("Section A");
+  Sensor sensorA(sectionA);
 
-  Threshold sensorThreshold3(20.0, 35.0, 45.0, 75.0);
-  Section sensorSection3("Section C", sensorThreshold3);
-  Sensor sensor3(sensorSection3);
+  Section sectionB("Section B");
+  Sensor sensorB(sectionB);
 
-  Threshold sensorThreshold4(18.0, 28.0, 40.0, 80.0);
-  Section sensorSection4("Section D", sensorThreshold4);
-  Sensor sensor4(sensorSection4);
-
-  // Add sensors to each greenhouse
-  myGreenHouse1.addSensor(sensor1);
-  myGreenHouse2.addSensor(sensor2);
-  myGreenHouse3.addSensor(sensor3);
-  myGreenHouse4.addSensor(sensor4);
+  myGreenHouse1.addSensor(sensorA);
+  myGreenHouse2.addSensor(sensorB);
 }
 
 void loop() {
-  // Keep WebSocket running
-  webSocket.loop();
+  socketIO.loop();
 
-  // Send data periodically (every 10 seconds for example)
   static unsigned long lastTime = 0;
   if (millis() - lastTime > 10000) {
     lastTime = millis();
+    myGreenHouse1.sendData();
+  }
 
-    // Send data from all greenhouses
-    myGreenHouse1.sendData();  // This will call captureData() on all sensors in GH001
-    myGreenHouse2.sendData();  // This will call captureData() on all sensors in GH002
-    myGreenHouse3.sendData();  // This will call captureData() on all sensors in GH003
-    myGreenHouse4.sendData();  // This will call captureData() on all sensors in GH004
+  static unsigned long buttonLastTime = 0;
+  if (digitalRead(BUTTON_PIN) == LOW && millis() - buttonLastTime > 300) {
+    buttonLastTime = millis();
+    GreenHouse* selected = &myGreenHouse1;
+    if (selected->sensorCount > 0) {
+      int randomSensorIndex = random(0, selected->sensorCount);
+      selected->sensors[randomSensorIndex]->captureAlarmingData();
+    }
   }
 }
