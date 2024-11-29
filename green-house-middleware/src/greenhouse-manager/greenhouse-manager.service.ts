@@ -26,4 +26,10 @@ export class GreenhouseManagerService {
       async send(pattern: string, data: any) {
         return this.client.send(pattern, data).toPromise();
       }
+
+      async createThreshold(newThreshold: Object) {
+    return await this.send("create-threshold", newThreshold); 
+}
+
+
 }
