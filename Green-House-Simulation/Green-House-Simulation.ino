@@ -1,21 +1,18 @@
 #include <WiFi.h>
 #include <WebSocketsClient.h>
 
-// Replace with your network credentials
+#define BUTTON_PIN 23
+
 const char* ssid = "TP-Link_C869";
 const char* password = "48233118";
 
-// Replace with your WebSocket server URL and port
-const char* webSocketServer = "192.168.0.109"; // Use "ws://IP_ADDRESS" for local IP
-const int webSocketPort = 80;  // Use the correct port, default is usually 80 or 8080
+const char* webSocketServer = "192.168.0.109"; 
+const int webSocketPort = 80;
 
-// Declare WebSocket client
 WebSocketsClient webSocket;
 
-// Forward declaration of the sendWebSocketMessage function
 void sendWebSocketMessage(String message);
 
-// Define the Manager class
 class Manager {
 public:
   String name;
@@ -24,7 +21,6 @@ public:
   Manager(String n, String p) : name(n), phone(p) {}
 };
 
-// Define the Threshold class
 class Threshold {
 public:
   float minTemperature;
@@ -32,20 +28,32 @@ public:
   float minHumidity;
   float maxHumidity;
 
+  // Constructor to initialize the threshold values with valid ranges
   Threshold(float minT, float maxT, float minH, float maxH)
       : minTemperature(minT), maxTemperature(maxT), minHumidity(minH), maxHumidity(maxH) {}
+
+  String toString() const {
+    return "minT: " + String(minTemperature) + ", maxT: " + String(maxTemperature) +
+           ", minH: " + String(minHumidity) + ", maxH: " + String(maxHumidity);
+  }
 };
 
-// Define the Section class
 class Section {
 public:
   String sectionName;
   Threshold threshold;
 
   Section(String name, Threshold t) : sectionName(name), threshold(t) {}
+
+  String toString() const {
+    return "Section: " + sectionName + ", Threshold: [" + threshold.toString() + "]";
+  }
+
+  Threshold getThreshold(){
+    return threshold;
+  }
 };
 
-// Define the Sensor class
 class Sensor {
 public:
   Section section;
@@ -53,39 +61,63 @@ public:
   bool useCelsius;
 
   Sensor(Section s) : section(s) {
-    // Randomly assign whether to send data in JSON or XML format
-    sendAsJson = random(0, 2); // 0 or 1 for JSON or XML
-    // Randomly assign whether to use Celsius or Fahrenheit
-    useCelsius = random(0, 2); // 0 or 1 for Celsius or Fahrenheit
+    sendAsJson = random(0, 2);
+    useCelsius = random(0, 2);
   }
 
-  void captureData() {
-    // Simulating sensor data capture
-    float temperature = random(10, 40);
-    float humidity = random(30, 80);
+  void captureData(Threshold threshold) {
+    // Ensure realistic temperature and humidity generation within threshold ranges
+    float temperature = threshold.minTemperature + 
+                        ((float)random(0, 10000) / 10000.0) * 
+                        (threshold.maxTemperature - threshold.minTemperature);
+
+    float humidity = threshold.minHumidity + 
+                     ((float)random(0, 10000) / 10000.0) * 
+                     (threshold.maxHumidity - threshold.minHumidity);
+
+    // Convert to Celsius or Fahrenheit as needed
+    String tempString = useCelsius ? String(temperature) + "C" : String(temperature * 9.0 / 5.0 + 32) + "F";
+    String data;
+
+    if (sendAsJson) {
+      data = "{\"Temperature\": \"" + tempString + "\", \"Humidity\": \"" + String(humidity) + "%\"}";
+    } else {
+      data = "<Sensor><Temperature>" + tempString + "</Temperature><Humidity>" + String(humidity) + "%</Humidity></Sensor>";
+    }
+
+    sendWebSocketMessage(data);
+  }
+
+  String toString() const {
+    return  "Threshold: [" + section.threshold.toString() + "]";
+  }
+
+  void captureAlarmingData(Threshold threshold) {
+    // Limit random variation for temperature and humidity to generate alarming data
+    float temperature = threshold.maxTemperature + (random(0, 1000) / 1000.0) * 5;  // Adjust the factor (5) if needed
+
+    float humidity = threshold.maxHumidity + (random(0, 1000) / 1000.0) * 5;  // Adjust the factor (5) if needed
+
+    Serial.println(threshold.toString());
 
     String tempString = useCelsius ? String(temperature) + "C" : String(temperature * 9.0 / 5.0 + 32) + "F";
     String data;
 
     if (sendAsJson) {
-      // Send data as JSON
       data = "{\"Temperature\": \"" + tempString + "\", \"Humidity\": \"" + String(humidity) + "%\"}";
     } else {
-      // Send data as XML
       data = "<Sensor><Temperature>" + tempString + "</Temperature><Humidity>" + String(humidity) + "%</Humidity></Sensor>";
     }
 
-    // Send the captured data over WebSocket
     sendWebSocketMessage(data);
   }
 };
 
-// Define the GreenHouse class
 class GreenHouse {
 public:
   String id;
   Manager manager;
-  Sensor* sensors[10]; // Maximum of 10 sensors
+  Sensor* sensors[10];
   int sensorCount;
 
   GreenHouse(String greenhouseId, Manager m) : id(greenhouseId), manager(m), sensorCount(0) {}
@@ -97,14 +129,25 @@ public:
   }
 
   void sendData() {
-    // Capture and send data from all sensors
     for (int i = 0; i < sensorCount; ++i) {
-      sensors[i]->captureData();
+      sensors[i]->captureData(sensors[i]->section.getThreshold()); 
     }
+  }
+
+  String toString() const {
+    String result = "GreenHouse ID: " + id + "\n";
+    result += "Manager: " + manager.name + " (Phone: " + manager.phone + ")\n";
+    result += "Sensors:\n";
+    
+    for (int i = 0; i < sensorCount; ++i) {
+      result += "  Sensor " + String(i + 1) + ": " + sensors[i]->toString() + "\n";
+    }
+    
+    return result;
   }
 };
 
-// Declare the GreenHouse objects for 4 different greenhouses
+// Instances of greenhouses
 GreenHouse myGreenHouse1("GH001", Manager("John Doe", "123456789"));
 GreenHouse myGreenHouse2("GH002", Manager("Jane Doe", "987654321"));
 GreenHouse myGreenHouse3("GH003", Manager("Alice Smith", "555123456"));
@@ -113,13 +156,11 @@ GreenHouse myGreenHouse4("GH004", Manager("Bob Johnson", "555987654"));
 void sendWebSocketMessage(String message) {
   if (webSocket.isConnected()) {
     webSocket.sendTXT(message);
-    Serial.println("Sent message: " + message);
   } else {
     Serial.println("WebSocket not connected. Cannot send message.");
   }
 }
 
-// WebSocket event handler
 void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
   switch (type) {
     case WStype_DISCONNECTED:
@@ -128,27 +169,23 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 
     case WStype_CONNECTED:
       Serial.println("WebSocket Connected");
-      // Send a message once connected
       webSocket.sendTXT("Connected to WebSocket Server!");
       break;
 
     case WStype_TEXT:
-      // Received a message from the server
-      Serial.printf("Received message: %s\n", payload);
+      //Serial.printf("Received message: %s\n", payload);
       break;
 
     case WStype_BIN:
-      // Handle binary data
-      Serial.println("Received binary data");
+      //Serial.println("Received binary data");
       break;
   }
 }
 
 void setup() {
-  // Initialize Serial Monitor
   Serial.begin(115200);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
 
-  // Connect to Wi-Fi
   WiFi.begin(ssid, password);
   Serial.println("Connecting to WiFi...");
   while (WiFi.status() != WL_CONNECTED) {
@@ -157,19 +194,16 @@ void setup() {
   }
   Serial.println("\nConnected to WiFi!");
 
-  // Initialize WebSocket client
-  webSocket.begin(webSocketServer, webSocketPort, "/"); // "/" is the endpoint, adjust if necessary
-
-  // Define event handling for WebSocket
+  webSocket.begin(webSocketServer, webSocketPort, "/");
   webSocket.onEvent(webSocketEvent);
+  webSocket.setReconnectInterval(5000);
 
-  // Connect and keep WebSocket alive
-  webSocket.setReconnectInterval(5000);  // Reconnect every 5 seconds if connection is lost
-
-  // Create Threshold, Section, and Sensor objects for each greenhouse
-  Threshold sensorThreshold1(15.0, 30.0, 40.0, 70.0); 
+  // Define threshold ranges that are realistic
+  Threshold sensorThreshold1(15.0, 30.0, 40.0, 70.0);
   Section sensorSection1("Section A", sensorThreshold1);
   Sensor sensor1(sensorSection1);
+
+  Serial.println(sensor1.toString());
 
   Threshold sensorThreshold2(10.0, 25.0, 30.0, 60.0);
   Section sensorSection2("Section B", sensorThreshold2);
@@ -183,26 +217,38 @@ void setup() {
   Section sensorSection4("Section D", sensorThreshold4);
   Sensor sensor4(sensorSection4);
 
-  // Add sensors to each greenhouse
   myGreenHouse1.addSensor(sensor1);
   myGreenHouse2.addSensor(sensor2);
   myGreenHouse3.addSensor(sensor3);
   myGreenHouse4.addSensor(sensor4);
+
+
+  Serial.println(myGreenHouse1.toString());
+
+
 }
 
 void loop() {
-  // Keep WebSocket running
   webSocket.loop();
 
-  // Send data periodically (every 10 seconds for example)
   static unsigned long lastTime = 0;
   if (millis() - lastTime > 10000) {
     lastTime = millis();
+    myGreenHouse1.sendData();
+    myGreenHouse2.sendData();
+    myGreenHouse3.sendData();
+    myGreenHouse4.sendData();
+  }
 
-    // Send data from all greenhouses
-    myGreenHouse1.sendData();  // This will call captureData() on all sensors in GH001
-    myGreenHouse2.sendData();  // This will call captureData() on all sensors in GH002
-    myGreenHouse3.sendData();  // This will call captureData() on all sensors in GH003
-    myGreenHouse4.sendData();  // This will call captureData() on all sensors in GH004
+  if (digitalRead(BUTTON_PIN) == LOW) {
+    Serial.println("BUTTON PRESSED");
+    GreenHouse* greenhouses[] = { &myGreenHouse1, &myGreenHouse2, &myGreenHouse3, &myGreenHouse4 };
+    int randomGreenhouseIndex = random(0, 4);
+    GreenHouse* selectedGreenhouse = greenhouses[randomGreenhouseIndex];
+    if (selectedGreenhouse->sensorCount > 0) {
+      int randomSensorIndex = random(0, selectedGreenhouse->sensorCount);
+      selectedGreenhouse->sensors[randomSensorIndex]->captureAlarmingData(selectedGreenhouse->sensors[randomSensorIndex]->section.getThreshold());
+    }
+    delay(1000);
   }
 }
