@@ -14,11 +14,11 @@ channel.queue_declare(queue='ALARM_QUEUE', durable=True)
 
 def callback(ch, method, properties, body):
     try:
-        client.messages.create(
-            body=body,
-            from_='+14172323849', 
-            to='+526681163510'          
-        )
+        #client.messages.create(
+        #    body=body,
+        #    from_='+14172323849', 
+        #    to='+526681163510'          
+        #)
         print(f"Message sent successfully: {body}")
         ch.basic_ack(delivery_tag=method.delivery_tag)  
     except Exception as e:

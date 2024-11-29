@@ -32,4 +32,8 @@ export class AlarmsService {
     async sendAlarm(){
         this.send("ALARM_QUEUE","SE ESTÁ QUEMANDO TODO ALV");
     }
+
+    checkThresholds(){
+        
+    }
 }
