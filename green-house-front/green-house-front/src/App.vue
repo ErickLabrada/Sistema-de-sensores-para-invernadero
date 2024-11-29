@@ -2,14 +2,49 @@
   <div id="app">
     <Navbar />
     <div class="content">
-      <div class="sensor-section">
-        <SensorCard v-for="sensor in sensors" :key="sensor.id" :sensor="sensor" />
+      <div class="sensor-table-container">
+        <div class="sensor-table-section">
+          <h2>Listado de Sensores</h2>
+          <table class="sensor-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Sección</th>
+                <th>Nombre</th>
+                <th>Invernadero</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="sensor in sensors" :key="sensor.id">
+                <td data-label="ID">{{ sensor.id }}</td>
+                <td data-label="Sección">{{ sensor.section }}</td>
+                <td data-label="Nombre">{{ sensor.name }}</td>
+                <td data-label="Invernadero">{{ sensor.greenhouse }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-      <AlarmList /> 
-      <div class="right-section">
-       
-        <div class="user-profile-section">
-          <UserProfile />
+
+      <div class="alarm-table-container">
+        <div class="alarm-table-section">
+          <h2>Listado de Alarmas</h2>
+          <table class="alarm-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Invernadero</th>
+                <th>Sensor</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="alarm in alarms" :key="alarm.name">
+                <td data-label="Nombre">{{ alarm.name }}</td>
+                <td data-label="Invernadero">{{ alarm.greenhouse }}</td>
+                <td data-label="Sensor">{{ alarm.sensor.name }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -18,116 +53,65 @@
 
 <script>
 import Navbar from './components/HeaderComponent.vue';
-import SensorCard from './components/SensorCard.vue';
-import AlarmList from './components/AlarmList.vue';
-
 
 export default {
   components: {
     Navbar,
-    SensorCard,
-    AlarmList,
-     
   },
   data() {
     return {
       sensors: [
-        { id: 1, humidity: '85%', temperature: '25C', type: 'Hum/temp', name: 'Sensor 1' },
-        { id: 2, humidity: '80%', temperature: '22C', type: 'Hum/temp', name: 'Sensor 2' },
-        { id: 3, humidity: '75%', temperature: '28C', type: 'Hum/temp', name: 'Sensor 3' },
-      ]
+        { id: 1, section: 'A1', name: 'Sensor 1', greenhouse: 'Invernadero 1' },
+        { id: 2, section: 'B2', name: 'Sensor 2', greenhouse: 'Invernadero 2' },
+        { id: 3, section: 'C3', name: 'Sensor 3', greenhouse: 'Invernadero 3' },
+      ],
+      alarms: [], 
+      alarmForm: {
+        name: '',
+        greenhouse: '',
+        sensor: null, 
+      },
+      greenhouses: [
+        { id: 1, name: 'Invernadero 1' },
+        { id: 2, name: 'Invernadero 2' },
+        { id: 3, name: 'Invernadero 3' },
+      ],
     };
-  }
-}
+  },
+  methods: {
+    openModal(type) {
+      this.modalType = type; 
+    },
+    closeModal() {
+      this.modalType = null; 
+      this.resetForms(); 
+    },
+    submitAlarm() {
+      
+      if (this.alarmForm.sensor) {
+        this.alarms.push({ 
+          name: this.alarmForm.name, 
+          greenhouse: this.alarmForm.greenhouse,
+          sensor: this.alarmForm.sensor, 
+        });
+        console.log('Datos de la alarma:', this.alarmForm);
+        this.closeModal(); 
+      } else {
+        alert("Por favor, seleccione un sensor.");
+      }
+    },
+    resetForms() {
+      this.alarmForm = {
+        name: '',
+        greenhouse: '',
+        sensor: null, 
+      };
+    },
+  },
+};
 </script>
 
 <style scoped>
-#app {
-  font-family: Arial, sans-serif;
-  padding: 1rem;
-}
+@import './assets/stylesApp.css';
 
-.content {
-  display: flex;
-  gap: 2rem;
-  flex-wrap: wrap; 
-}
-
-.sensor-section {
-  display: flex;
-  gap: 2rem;
-  justify-content: center; 
-  flex: 2;
-  margin-top: 50px; 
-}
-
-.sensor-card {
-  width: 200px;
-  height: 200px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #4CAF50; 
-  border-radius: 50%; 
-  color: white;
-  font-size: 1.5rem;
-  font-weight: bold;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-
-.right-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  align-items: flex-end;
-  justify-content: flex-start;
-  flex: 1;
-}
-
-.report-section {
-  background-color: #f0f0f0;
-  padding: 1rem;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.report-section span {
-  font-weight: bold;
-  margin-bottom: 0.5rem;
-}
-
-.report-section button {
-  padding: 0.5rem 1rem;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-
-@media (max-width: 768px) {
-  .content {
-    flex-direction: column; 
-    align-items: center; 
-  }
-
-  .sensor-section {
-    margin-top: 20px; 
-    gap: 2rem; 
-  }
-
-  .sensor-card {
-    width: 150px;
-    height: 150px;
-  }
-
-  .right-section {
-    width: 100%;
-    align-items: center; 
-  }
-}
 </style>
