@@ -9,10 +9,5 @@ export class AppController {
   constructor(private thresholdService: ThresholdService){
   }
 
-  @MessagePattern("create-theshold")
-  async createThreshold(@Payload() newThreshold: CreateThresholdDTO) {
-      console.log("Received");
-      await this.thresholdService.createThreshold(newThreshold);
-  }
-  
+
 }

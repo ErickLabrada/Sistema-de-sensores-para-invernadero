@@ -12,14 +12,13 @@ export class ThresholdService {
          }
     async createThreshold(createThresholdDTO: CreateThresholdDTO){
         const newThreshold = this.thresholdRepository.create(createThresholdDTO)
-        console.log("Created")
         return await this.thresholdRepository.save(newThreshold)
     }
 
     async getThresholds(){
         return await this.thresholdRepository.find()
     }
-
+ 
     async getThreshold(id: number){
         return await this.thresholdRepository.findOne({
             where:{
@@ -28,9 +27,16 @@ export class ThresholdService {
         )
     }
 
-    async updateThreshold(id:number,updateThresholdDTO: UpdateThresholdDTO){
-        return await this.thresholdRepository.update(id,updateThresholdDTO)
+    async updateThreshold(updateThresholdDTO: UpdateThresholdDTO) {
+        const { id, ...updateData } = updateThresholdDTO; 
+        await this.thresholdRepository.update(id, updateData);
+        return await this.thresholdRepository.findOne({
+            where:{id}
+        })
     }
 
-
+    async deleteThreshold(id: number){
+        return await this.thresholdRepository.delete(id)
+    }
 }
+ 
