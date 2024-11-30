@@ -1,22 +1,25 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import Report from './components/ReportesInvernadero.vue'; 
-import inicio from './App.vue';
+import PaginaInicial from './components/PaginaInicial.vue';
+import ReportesInvernadero from './components/ReportesInvernadero.vue';
+
+
+
 const routes = [
-  
   {
-    path: '/report',
-    name: 'report',
-    component: Report, 
+    path: '/reports', // Ruta para el reporte
+    name: 'reports',
+    component: ReportesInvernadero,
   },
+ 
   {
-    path: '/app',
-    name: 'app',
-    component: inicio, 
+    path: '/inicio', // Ruta principal que carga SensoresAlarma
+    name: 'inicio',
+    component: PaginaInicial,
   },
 ];
 
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
+  history: createWebHistory(),
   routes,
 });
 

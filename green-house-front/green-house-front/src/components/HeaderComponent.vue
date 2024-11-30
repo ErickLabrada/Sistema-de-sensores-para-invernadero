@@ -1,18 +1,17 @@
 <template>
   <nav class="navbar">
-    <div class="logo">Sistema de Sensores</div>
+    <!-- Envolvemos el logo con un router-link para redireccionar -->
+    <router-link to="/inicio" class="logo">Sistema de Sensores</router-link>
     <div class="navbar-links">
       <button @click="openModal('sensor')">Agregar Sensor</button>
       <button @click="openModal('alarm')">Agregar Alarma</button>
-
-      <!-- Cambio de Modal a Navegación con router-link -->
-      <router-link to="/report">
+      <router-link to="/reports">
         <button>Reportes</button>
       </router-link>
-
       <button @click="openModal('greenhouse')">Agregar Invernadero</button>
     </div>
   </nav>
+
   <!-- Modal para agregar Sensor -->
   <div v-if="modalType === 'sensor'" class="modal">
     <div class="modal-content">
@@ -33,39 +32,6 @@
     </div>
   </div>
 
-  <!-- Modal para agregar Alarma -->
-  <div v-if="modalType === 'alarm'" class="modal">
-    <div class="modal-content">
-      <span class="close" @click="closeModal">&times;</span>
-      <h2>Agregar Alarma</h2>
-      <form @submit.prevent="submitAlarm">
-        <label for="name">Nombre de la Alarma:</label>
-        <input type="text" id="name" v-model="alarmForm.name" required />
-
-        <label for="greenhouse">Invernadero:</label>
-        <select id="greenhouse" v-model="alarmForm.greenhouse" required>
-          <option v-for="greenhouse in greenhouses" :key="greenhouse.id" :value="greenhouse.name">{{ greenhouse.name }}</option>
-        </select>
-
-        <label for="sensor">Seleccionar Sensor:</label>
-        <select id="sensor" v-model="alarmForm.sensor" required>
-          <option v-for="sensor in sensors" :key="sensor.id" :value="sensor">{{ sensor.name }}</option>
-        </select>
-
-        <button type="submit" class="btn">Guardar</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal para Reportes -->
-  <div v-if="modalType === 'reports'" class="modal">
-    <div class="modal-content">
-      <span class="close" @click="closeModal">&times;</span>
-      <h2>Reportes</h2>
-      <p>Formulario para visualizar reportes.</p>
-    </div>
-  </div>
-
   <!-- Modal para Agregar Invernadero -->
   <div v-if="modalType === 'greenhouse'" class="modal">
     <div class="modal-content">
@@ -74,7 +40,6 @@
       <form @submit.prevent="submitGreenhouse">
         <label for="greenhouseName">Nombre del Invernadero:</label>
         <input type="text" id="greenhouseName" v-model="greenhouseForm.name" required />
-        
         <button type="submit" class="btn">Agregar</button>
       </form>
     </div>
@@ -86,29 +51,8 @@ export default {
   data() {
     return {
       modalType: null,
-      sensorForm: {
-        section: '',
-        name: '',
-        greenhouse: '',
-      },
-      alarmForm: {
-        name: '',
-        greenhouse: '',
-        sensor: null,
-      },
-      greenhouseForm: {
-        name: '', 
-      },
-      greenhouses: [
-        { id: 1, name: 'Invernadero 1' },
-        { id: 2, name: 'Invernadero 2' },
-        { id: 3, name: 'Invernadero 3' },
-      ],
-      sensors: [
-        { id: 1, name: 'Sensor 1' },
-        { id: 2, name: 'Sensor 2' },
-        { id: 3, name: 'Sensor 3' },
-      ],
+      sensorForm: { section: "", name: "", greenhouse: "" },
+      greenhouseForm: { name: "" },
     };
   },
   methods: {
@@ -117,39 +61,139 @@ export default {
     },
     closeModal() {
       this.modalType = null;
-      this.resetForms();
     },
     submitSensor() {
-      console.log('Datos del sensor:', this.sensorForm);
-      this.closeModal();
-    },
-    submitAlarm() {
-      console.log('Datos de la alarma:', this.alarmForm);
+      console.log("Sensor agregado:", this.sensorForm);
       this.closeModal();
     },
     submitGreenhouse() {
-      console.log('Invernadero agregado:', this.greenhouseForm.name);
+      console.log("Invernadero agregado:", this.greenhouseForm.name);
       this.closeModal();
-    },
-    resetForms() {
-      this.sensorForm = {
-        section: '',
-        name: '',
-        greenhouse: '',
-      };
-      this.alarmForm = {
-        name: '',
-        greenhouse: '',
-        sensor: null,
-      };
-      this.greenhouseForm = {
-        name: '',
-      };
     },
   },
 };
 </script>
 
 <style scoped>
-@import '../assets/stylesHeader.css';
+/* Estilo principal de la barra de navegación */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #4CAF50;
+  color: white;
+  flex-wrap: wrap;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+/* Ajuste de la barra de navegación */
+.navbar-links {
+  display: flex;
+  flex-wrap: wrap; /* Permite que los botones se ajusten a la pantalla */
+  gap: 1rem;
+  justify-content: center; /* Centra los botones en la barra */
+  flex-grow: 1;
+}
+
+.navbar-links button {
+  padding: 0.5rem 1rem;
+  background-color: #fff;
+  color: #4CAF50;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.navbar-links button:hover {
+  background-color: #45a049;
+  color: white;
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+}
+
+.close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+/* Responsividad */
+@media (max-width: 768px) {
+  .navbar {
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+  }
+
+  .navbar-links {
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .navbar-links button {
+    width: 100%;
+    text-align: center;
+  }
+}
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: white; /* Color blanco del logo */
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.logo:hover {
+  text-decoration: underline; /* Subrayado al pasar el cursor */
+}
+
+/* Ajuste de los enlaces y botones */
+.navbar-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  flex-grow: 1;
+}
+
+.navbar-links button {
+  padding: 0.5rem 1rem;
+  background-color: #fff;
+  color: #4CAF50;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.navbar-links button:hover {
+  background-color: #45a049;
+  color: white;
+}
 </style>
