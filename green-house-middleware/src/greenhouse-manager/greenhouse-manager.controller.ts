@@ -11,6 +11,7 @@ import { CreateSensorDTO } from './dtos/sensor/create-sensor.dto';
 import { UpdateSensorDTO } from './dtos/sensor/update-sensor.dto';
 import { CreateGreenhouseDTO } from './dtos/greenhouse/create-greenhouse.dto';
 import { UpdateGreenhouseDTO } from './dtos/greenhouse/update-greenhouse.dto';
+import { GetThresholdsDTO } from './dtos/threshold/get-threshold.dto';
 
 @Controller('greenhouse-manager')
 export class GreenhouseManagerController {
@@ -35,6 +36,16 @@ export class GreenhouseManagerController {
     async getThresholds(){
         return await this.greenhouseManagerService.getThresholds()
     }
+    
+    @Get("/threshold-by-greenhouse-and-section")
+    async getThresholdByGreenHouseAndSection(@Body() getThresholdsDTO: GetThresholdsDTO) {
+        return await this.greenhouseManagerService.getThesholdByGreenhouseAndSection(
+            getThresholdsDTO.identifier,
+            getThresholdsDTO.section
+        );
+    }
+    
+
 
     @Patch("/threshold/:id")
     async updateThresholds(@Param("id",ParseIntPipe)id: number,@Body() updateThreshold: UpdateThresholdDTO){

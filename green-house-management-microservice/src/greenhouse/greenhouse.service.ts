@@ -11,73 +11,120 @@ import { Repository } from 'typeorm';
 
 @Injectable()
 export class GreenhouseService {
-
     constructor(
         @InjectRepository(Greenhouse) private greenhouseRepository: Repository<Greenhouse>,
         @InjectRepository(Manager) private managerRepository: Repository<Manager>,
         @InjectRepository(Sensor) private sensorRepository: Repository<Sensor>,
         @InjectRepository(Section) private sectionRepository: Repository<Section>,
         @InjectRepository(Threshold) private thresholdRepository: Repository<Threshold>,
-    ){}    
+    ) {}
 
     async createGreenhouse(createGreenhouse: CreateGreenhouseDTO) {
         try {
-            // Extract threshold and section data from the incoming request
+            console.log(createGreenhouse.sensor)
+            // Check if 'sensor' and 'section' exist
+            if (!createGreenhouse.sensor || !createGreenhouse.sensor.section) {
+                throw new Error('Sensor or section data is missing');
+            }
+    
             const { threshold, ...sectionData } = createGreenhouse.sensor.section;
     
-            // Create and save the threshold
             const newThreshold = this.thresholdRepository.create(threshold);
             const savedThreshold = await this.thresholdRepository.save(newThreshold);
     
-            // Create the section with the saved threshold
             const newSection = this.sectionRepository.create({
                 ...sectionData,
-                threshold: savedThreshold, // Associate the threshold with the section
+                threshold: savedThreshold,
             });
-    
-            // Save the section
             const savedSection = await this.sectionRepository.save(newSection);
     
-            // Create the sensor with the saved section
             const newSensor = this.sensorRepository.create({
                 ...createGreenhouse.sensor,
-                section: savedSection, // Associate the section with the sensor
+                section: savedSection,
             });
-    
-            // Save the sensor
             const savedSensor = await this.sensorRepository.save(newSensor);
     
-            // Create and save the manager
             const newManager = this.managerRepository.create(createGreenhouse.manager);
             const savedManager = await this.managerRepository.save(newManager);
     
-            // Create the greenhouse and associate the saved sensor and manager
-            const newGreenHouse = this.greenhouseRepository.create({
+            const newGreenhouse = this.greenhouseRepository.create({
                 ...createGreenhouse,
-                sensors: [savedSensor], // Ensure sensors is passed as an array
-                manager: savedManager,  // Associate the saved manager
+                sensors: [savedSensor],
+                manager: savedManager,
             });
     
-            // Save the greenhouse and return it
-            return await this.greenhouseRepository.save(newGreenHouse);
+            return await this.greenhouseRepository.save(newGreenhouse);
         } catch (error) {
-            console.error("Error creating greenhouse:", error.message);
-            throw new Error("Failed to create greenhouse");
+            console.error('Error creating greenhouse:', error.message);
+            throw new Error('Failed to create greenhouse');
         }
     }
     
-    
 
-    async getGreenhouses(){
-        return await this.greenhouseRepository.find()
+    async getGreenhouses() {
+        return await this.greenhouseRepository.find({
+            relations: ['sensors', 'manager'],
+        });
     }
 
-    async getGreenhouse(id: number){
-        return await this.greenhouseRepository.findOne({
-            where:{
-                id
-            }}
-        )
+    async getGreenhouse(id: number) {
+        const greenhouse = await this.greenhouseRepository.findOne({
+            where: { id },
+            relations: ['sensors', 'sensors.section', 'manager'],
+        });
+        if (!greenhouse) {
+            throw new Error(`Greenhouse with ID ${id} not found`);
+        }
+        return greenhouse;
     }
 
+    async updateGreenhouse(id: number, updateGreenhouse: UpdateGreenhouseDTO) {
+        const greenhouse = await this.greenhouseRepository.findOne({
+            where: { id },
+            relations: ['sensors', 'manager'],
+        });
+        if (!greenhouse) {
+            throw new Error(`Greenhouse with ID ${id} not found`);
+        }
+
+        const updatedGreenhouse = this.greenhouseRepository.merge(greenhouse, updateGreenhouse);
+
+        if (updateGreenhouse.manager) {
+            const updatedManager = this.managerRepository.create(updateGreenhouse.manager);
+            await this.managerRepository.save(updatedManager);
+            updatedGreenhouse.manager = updatedManager;
+        }
+
+        if (updateGreenhouse.sensor) {
+            const { threshold, ...sectionData } = updateGreenhouse.sensor.section;
+
+            const updatedThreshold = this.thresholdRepository.create(threshold);
+            await this.thresholdRepository.save(updatedThreshold);
+
+            const updatedSection = this.sectionRepository.create({
+                ...sectionData,
+                threshold: updatedThreshold,
+            });
+            await this.sectionRepository.save(updatedSection);
+
+            const updatedSensor = this.sensorRepository.create({
+                ...updateGreenhouse.sensor,
+                section: updatedSection,
+            });
+            await this.sensorRepository.save(updatedSensor);
+
+            updatedGreenhouse.sensors = [updatedSensor];
+        }
+
+        return await this.greenhouseRepository.save(updatedGreenhouse);
+    }
+
+    async deleteGreenhouse(id: number) {
+        const greenhouse = await this.greenhouseRepository.findOne({ where: { id } });
+        if (!greenhouse) {
+            throw new Error(`Greenhouse with ID ${id} not found`);
+        }
+
+        return await this.greenhouseRepository.remove(greenhouse);
+    }
 }

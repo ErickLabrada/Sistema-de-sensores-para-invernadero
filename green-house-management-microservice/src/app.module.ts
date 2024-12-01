@@ -9,10 +9,12 @@ import { SectionModule } from './section/section.module';
 import { SensorModule } from './sensor/sensor.module';
 import { GreenhouseModule } from './greenhouse/greenhouse.module';
 import { ManagerModule } from './manager/manager.module';
+import { Section } from './domain/section.entity';
+import { Greenhouse } from './domain/greenhouse.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Threshold]),
+    TypeOrmModule.forFeature([Threshold,Section,Greenhouse]),
     TypeOrmModule.forRoot({
       type: "mysql",
       host: "localhost",

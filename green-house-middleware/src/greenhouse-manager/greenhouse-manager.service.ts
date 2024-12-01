@@ -14,6 +14,8 @@ import { CreateSensorDTO } from './dtos/sensor/create-sensor.dto';
 import { UpdateSensorDTO } from './dtos/sensor/update-sensor.dto';
 import { CreateGreenhouseDTO } from './dtos/greenhouse/create-greenhouse.dto';
 import { UpdateGreenhouseDTO } from './dtos/greenhouse/update-greenhouse.dto';
+import { GetThresholdsDTO } from './dtos/threshold/get-threshold.dto';
+import { GetManagerDTO } from 'src/alarms/dtos/get-manager.dto';
 
 @Injectable()
 export class GreenhouseManagerService {
@@ -51,6 +53,22 @@ export class GreenhouseManagerService {
   async getTheshold(id: number) {
     return await this.send('get-threshold', id);
   }
+
+  async getManagerByGreenhouse(identifier: string): Promise<GetManagerDTO> {
+    console.log("AAAAAAAAaa")
+    return this.send('get-manager-by-greenhouse', identifier);
+  }
+
+  async getThesholdByGreenhouseAndSection(identifier: string, section: string): Promise<CreateThresholdDTO> {
+
+    const getThresholddto: GetThresholdsDTO = {
+      identifier: identifier,
+      section: section,
+    };
+  
+    return await this.send('get-threshold-by-greenhouse-and-section', getThresholddto);
+  }
+
 
   async updateThreshold(id: number, updateThreshold: UpdateThresholdDTO) {
     updateThreshold.id = id;

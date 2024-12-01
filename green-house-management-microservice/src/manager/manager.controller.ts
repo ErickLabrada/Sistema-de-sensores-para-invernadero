@@ -23,6 +23,12 @@ async getManager(@Payload() id: number){
     return this.managerService.getManager(id)
 }
 
+@MessagePattern("get-manager-by-greenhouse")
+async getManagerByGreenhouse(@Payload() identifier: string){
+    console.log("COntroller")
+    return await this.managerService.getManagerByGreenhouse(identifier)
+}
+
 @MessagePattern("update-manager")
 async updateManager(@Payload() updateManagerDTO: UpdateManagerDto){  
     return this.managerService.updateManager(updateManagerDTO )

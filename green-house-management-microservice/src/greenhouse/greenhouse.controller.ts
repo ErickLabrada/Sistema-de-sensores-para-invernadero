@@ -9,8 +9,8 @@ export class GreenhouseController {
     constructor(private greenhouseService: GreenhouseService) {}
 
     @MessagePattern("create-greenhouse")
-  async createGreenhouse(@Payload() nreGreenhouse: CreateGreenhouseDTO){
-      return this.greenhouseService.createGreenhouse(nreGreenhouse)
+  async createGreenhouse(@Payload() greenHouse: CreateGreenhouseDTO){
+      return this.greenhouseService.createGreenhouse(greenHouse)
   }
    
   @MessagePattern("get-greenhouses")

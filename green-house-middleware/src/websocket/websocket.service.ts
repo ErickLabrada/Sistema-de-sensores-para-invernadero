@@ -6,8 +6,9 @@ import { DataService } from 'src/data/data.service';
 import { throwError } from 'rxjs';
 import { XMLParser } from 'fast-xml-parser';
 import { GreenHouseDTO } from './DTOs/greenhouse.dto';
+import { CheckAlarmDTO } from 'src/alarms/dtos/check-alarm.dto';
 @Injectable()
-@WebSocketGateway()
+@WebSocketGateway(80, { cors: { origin: '*' } })
 export class WebsocketService implements OnGatewayConnection, OnGatewayDisconnect{
 @WebSocketServer()
 Server: Server
@@ -31,21 +32,28 @@ handleConnection(client: any){
     }
 
     @SubscribeMessage("Data")
-    getData(@ConnectedSocket() client: Socket, @MessageBody() payload: string){
-        let data=this.standarizeFormat(payload);
-        console.log(data);
+    getData(@ConnectedSocket() client: Socket, @MessageBody() payload: any){
+        console.log(payload)
+  
+        let data=this.standarizeFormat(payload.payload);
         data=this.standarizeTemperature(data)
-
-        console.log(JSON.stringify(data))
-
-        this.alarmService.checkThresholds();
+        let alarmDTO=new CheckAlarmDTO();
+        alarmDTO.data=data.GreenHouse.Sensor.Section.Data
+        alarmDTO.identifier=data.GreenHouse.Sensor.Section.Name
+        alarmDTO.section=data.GreenHouse.Identifier
+        console.log("AAAAAAAAAAAAAA")
+        console.log(data.GreenHouse.Sensor.Section.Data)
+        console.log(alarmDTO)
+        this.alarmService.checkThresholds(alarmDTO);
         //this.dataService.persist();
     }
 
     private standarizeFormat(data:string){
+        console.log("standarizing")
+        console.log(data)
         if(this.isJson(data)){
             return JSON.parse(data);
-        }
+        }else
         if (this.isXml(data)){
             const parser=new XMLParser();
             return parser.parse(data)
@@ -55,28 +63,24 @@ handleConnection(client: any){
     }
 
     private standarizeTemperature(data: any) {
-        // Step 1: Convert the input `data` to a JSON string for debugging (optional)
         const jsonString = JSON.stringify(data);
         console.log("Original data:", jsonString);
     
         let trimmedData;
         try {
-            // Step 2: Parse the JSON string to work with the object
             const parsedData = JSON.parse(jsonString);
     
-            // Step 3: Access the relevant part of the data (GreenHouse > Sensor > Section > Data)
             if (parsedData?.GreenHouse?.Sensor?.Section?.Data) {
                 trimmedData = parsedData.GreenHouse.Sensor.Section.Data;
             } else {
                 console.log('Invalid data structure, missing Data.');
-                return data;  // Return the original data if the structure is invalid
+                return data;  
             }
         } catch (e) {
             console.error("Error parsing JSON:", e);
-            return data;  // Return the original data in case of error
+            return data; 
         }
     
-        // Step 4: Perform the temperature conversion if the unit is Fahrenheit
         if (trimmedData?.Temperature_Unit === "F") {
             trimmedData.Temperature_Unit = "C";
             trimmedData.Temperature = ((trimmedData.Temperature - 32) * (5 / 9));
@@ -85,10 +89,8 @@ handleConnection(client: any){
             console.log('Temperature unit is already in Celsius or unknown:', trimmedData.Temperature_Unit);
         }
     
-        // Step 5: Replace the data in the original structure and return the updated data
         data.GreenHouse.Sensor.Section.Data = trimmedData;
     
-        // Return the updated data with replaced temperature
         return data;
     }
     
@@ -107,6 +109,8 @@ handleConnection(client: any){
     private isJson(string: string): boolean {
         try {
             const parsed = JSON.parse(string);
+            console.log(parsed)
+
             return typeof parsed === 'object' || Array.isArray(parsed);
         } catch (e) {
             return false;

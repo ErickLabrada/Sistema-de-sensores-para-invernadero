@@ -11,6 +11,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 @Module({
   imports:[TypeOrmModule.forFeature([Greenhouse,Sensor,Section,Threshold,Manager])],
   controllers: [GreenhouseController],
-  providers: [GreenhouseService]
+  providers: [GreenhouseService],
+  exports: [GreenhouseService],  // Export GreenhouseService if needed elsewhere
 })
 export class GreenhouseModule {}

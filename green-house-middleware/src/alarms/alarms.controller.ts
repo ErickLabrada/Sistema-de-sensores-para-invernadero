@@ -5,10 +5,5 @@ import { AlarmsService } from './alarms.service';
 export class AlarmsController {
     constructor(private alarmService: AlarmsService){}
     
-    
-    @Post()
-    sendAlarm(){
-        this.alarmService.sendAlarm();
-    }
 
 }
