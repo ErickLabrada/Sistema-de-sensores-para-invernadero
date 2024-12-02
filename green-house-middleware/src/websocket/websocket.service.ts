@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, UseGuards } from '@nestjs/common';
 import { WebSocketGateway, OnGatewayConnection,OnGatewayDisconnect, WebSocketServer, SubscribeMessage, ConnectedSocket, MessageBody } from '@nestjs/websockets';
 import { Server, Socket} from 'socket.io';
 import { AlarmsService } from 'src/alarms/alarms.service';
@@ -7,8 +7,11 @@ import { throwError } from 'rxjs';
 import { XMLParser } from 'fast-xml-parser';
 import { GreenHouseDTO } from './DTOs/greenhouse.dto';
 import { CheckAlarmDTO } from 'src/alarms/dtos/check-alarm.dto';
+import { WsJwtGuard } from 'src/auth/ws-jst/ws-jst.guard';
+import { SocketAuthMiddleware } from 'src/auth/websocket.middleware';
 @Injectable()
-@WebSocketGateway(80, { cors: { origin: '*' } })
+@WebSocketGateway(80, { cors: { origin: '*' }})
+@UseGuards(WsJwtGuard)
 export class WebsocketService implements OnGatewayConnection, OnGatewayDisconnect{
 @WebSocketServer()
 Server: Server
@@ -17,7 +20,13 @@ Server: Server
         private dataService: DataService
     ){}
 
-handleConnection(client: any){
+    afterInit(client: Socket){
+        //this is a sort of middleware for socket.io
+        client.use(SocketAuthMiddleware()as any);
+        Logger.log("AFTER INIT")   
+    }
+
+    handleConnection(client: Socket){
         console.log("Client connected:",client.id);
     }
     handleDisconnect(client: any){
@@ -41,16 +50,16 @@ handleConnection(client: any){
         alarmDTO.data=data.GreenHouse.Sensor.Section.Data
         alarmDTO.identifier=data.GreenHouse.Sensor.Section.Name
         alarmDTO.section=data.GreenHouse.Identifier
-        console.log("AAAAAAAAAAAAAA")
-        console.log(data.GreenHouse.Sensor.Section.Data)
-        console.log(alarmDTO)
+        //console.log("AAAAAAAAAAAAAA")
+        //console.log(data.GreenHouse.Sensor.Section.Data)
+        //console.log(alarmDTO)
         this.alarmService.checkThresholds(alarmDTO);
         //this.dataService.persist();
     }
 
     private standarizeFormat(data:string){
-        console.log("standarizing")
-        console.log(data)
+        //console.log("standarizing")
+        //console.log(data)
         if(this.isJson(data)){
             return JSON.parse(data);
         }else
@@ -64,7 +73,7 @@ handleConnection(client: any){
 
     private standarizeTemperature(data: any) {
         const jsonString = JSON.stringify(data);
-        console.log("Original data:", jsonString);
+        //console.log("Original data:", jsonString);
     
         let trimmedData;
         try {

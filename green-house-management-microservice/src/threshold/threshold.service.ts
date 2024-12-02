@@ -47,10 +47,6 @@ export class ThresholdService {
         return await this.thresholdRepository.delete(id)
     }
     async getThresholdByGreenhouseAndSection(getThresholdDto: GetThresholdsDTO) {
-        // Fetch greenhouse from repository
-
-
-
         const greenhouse = await this.greenhouseRepository.findOne({
             where: { identifier: getThresholdDto.identifier },relations:["sensors","sensors.section","sensors.section.threshold"]
         });
