@@ -9,6 +9,7 @@ export class AuthController {
 
     @Post("login")
     signIn(@Body() identifier: LoginDTO){
+        console.log("1")
         return this.authService.signIn(identifier.identifier)
     }
 

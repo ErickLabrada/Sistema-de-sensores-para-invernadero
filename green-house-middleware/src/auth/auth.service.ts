@@ -13,6 +13,7 @@ export class AuthService {
 
     async signIn(identifier: string): Promise<any>{
         const greenhouse= await this.greenHouseManagerService.getGreenhouseByIdentifier(identifier)
+        console.log("greenhouse")
         console.log(greenhouse)
         if (!greenhouse){
             throw new UnauthorizedException();
