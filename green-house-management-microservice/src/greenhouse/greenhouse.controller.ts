@@ -23,4 +23,10 @@ export class GreenhouseController {
       return this.greenhouseService.getGreenhouse(id)
   }
 
+  @MessagePattern("get-greenhouse-by-identifier")
+  async getGreenhouseByIdentifer(@Payload() identifier: string){
+    return this.greenhouseService.getGreenhouseByIdentifier(identifier)
+  }
+
+
 }

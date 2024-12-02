@@ -5,10 +5,11 @@
 #include <ArduinoJson.h>
 #include <WebSocketsClient.h>
 #include <SocketIOclient.h>
+#include <HTTPClient.h>
 
 //const char* socketIoServer = "192.168.0.109";
 const uint16_t socketIoPort = 80;
-const char* socketIoServer = "192.168.1.70";
+const char* socketIoServer = "192.168.0.109";
 
 WiFiMulti WiFiMulti;
 SocketIOclient socketIO;
@@ -103,12 +104,8 @@ public:
   Sensor(Section s, bool celsius, bool jsonFormat)
     : section(s), useCelsius(celsius), sendAsJson(jsonFormat) {}
 
-  void captureData(String id) {
-    // Improved debugging for sendAsJson
-    USE_SERIAL.print("sendAsJson: ");
-    USE_SERIAL.println(sendAsJson ? "1" : "0");  // Print 1 or 0 for clarity
-    USE_SERIAL.print("Celcius: ");
-    USE_SERIAL.println(useCelsius ? "1" : "0");  // Print 1 or 0 for clarity
+  void captureData(String id, String jwt) {
+    // Improved debugging for sendAsJson    
     float temperature = random(20, 30);          // Example temperature in Celsius
     float humidity = random(45, 60);             // Example humidity percentage
 
@@ -164,21 +161,23 @@ public:
     JsonArray array = doc.to<JsonArray>();
     array.add("Data");
 
-    USE_SERIAL.println(data);
 
     JsonObject param1 = array.createNestedObject();
     param1["payload"] = data;
 
     String output;
     serializeJson(doc, output);
+
+    String customHeader = "Authorization: Bearer " + jwt;
+    const char* customHeaderChar = customHeader.c_str();
+
+    socketIO.setExtraHeaders(customHeaderChar);
+
     socketIO.send(sIOtype_EVENT, output);
   }
-  void captureAlarmingData(String id) {
+  void captureAlarmingData(String id, String jwt) {
     // Improved debugging for sendAsJson
-    USE_SERIAL.print("sendAsJson: ");
-    USE_SERIAL.println(sendAsJson ? "1" : "0");  // Print 1 or 0 for clarity
-    USE_SERIAL.print("Celcius: ");
-    USE_SERIAL.println(useCelsius ? "1" : "0");  // Print 1 or 0 for clarity
+   
     float temperature = random(31, 40);          // Example temperature in Celsius
     float humidity = random(71, 80);             // Example humidity percentage
 
@@ -234,13 +233,17 @@ public:
     JsonArray array = doc.to<JsonArray>();
     array.add("Data");
 
-    USE_SERIAL.println(data);
-
     JsonObject param1 = array.createNestedObject();
     param1["payload"] = data;
 
     String output;
     serializeJson(doc, output);
+
+    String customHeader = "Authorization: Bearer " + jwt;
+    const char* customHeaderChar = customHeader.c_str();
+
+    socketIO.setExtraHeaders(customHeaderChar);
+
     socketIO.send(sIOtype_EVENT, output);
   }
 };
@@ -249,6 +252,7 @@ public:
 class GreenHouse {
 public:
   String id;
+  String auth;
   Manager manager;
   Sensor* sensors[10];
   int sensorCount;
@@ -263,13 +267,58 @@ public:
   }
 
   void sendAlarmingData() {
-    sensors[random(sensorCount)]->captureAlarmingData(this->id);
+    sensors[random(sensorCount)]->captureAlarmingData(this->id, this->auth);
   }
 
   void sendData() {
     for (int i = 0; i < sensorCount; ++i) {
-      sensors[i]->captureData(this->id);
+      sensors[i]->captureData(this->id, this->auth);
     }
+  }
+
+  String login() {
+    if (WiFi.status() == WL_CONNECTED) {
+      HTTPClient http;
+      Serial.println("192.168.0.109:3000/auth/login");
+
+      http.begin("http://192.168.0.109:3000/auth/login");  // Replace with your server's endpoint
+
+      // Create the JSON document for the request body
+      StaticJsonDocument<1024> doc;
+      doc["identifier"] = this->id;
+
+      String requestBody;
+      serializeJson(doc, requestBody);                     // Use the correct document
+      http.addHeader("Content-Type", "application/json");  // Add content type header
+      Serial.println(requestBody);
+      int httpResponseCode = http.POST(requestBody);
+
+      if (httpResponseCode > 0) {  // Check if the request was successful
+        String response = http.getString();
+
+        StaticJsonDocument<300> responseJson;
+        DeserializationError error = deserializeJson(responseJson, response);
+
+        if (!error) {
+          // Extract the JWT token from the response and set it to the `auth` attribute
+          String jwtToken = responseJson["access_token"].as<String>();
+          this->auth = jwtToken;  // Set the token in the auth attribute
+          Serial.println("JWT Token: " + jwtToken);
+          http.end();       // Clean up HTTP client
+          return jwtToken;  // Return the token
+        } else {
+          Serial.println("Failed to parse JSON response");
+        }
+      } else {
+        Serial.println("HTTP POST failed, response code: " + String(httpResponseCode));
+      }
+
+      http.end();  // Clean up HTTP client
+    } else {
+      Serial.println("WiFi is not connected");
+    }
+
+    return "";  // Return an empty string if login fails
   }
 };
 
@@ -286,8 +335,8 @@ void setup() {
   USE_SERIAL.println();
   USE_SERIAL.println();
 
-  //  WiFiMulti.addAP("TP-Link_C869", "48233118");
-  WiFiMulti.addAP("INFINITUM5F36", "cbGQy4qWdG");
+  WiFiMulti.addAP("TP-Link_C869", "48233118");
+  //WiFiMulti.addAP("INFINITUM5F36", "cbGQy4qWdG");
 
   while (WiFiMulti.run() != WL_CONNECTED) {
     delay(100);
@@ -295,6 +344,8 @@ void setup() {
 
   String ip = WiFi.localIP().toString();
   USE_SERIAL.printf("[SETUP] WiFi Connected %s\n", ip.c_str());
+
+
 
   Section sectionA("Section A");
   Sensor* sensorA = new Sensor(sectionA, true, true);
@@ -314,6 +365,11 @@ void setup() {
 
   socketIO.begin(socketIoServer, 80, "/socket.io/?EIO=4");
   socketIO.onEvent(socketIOEvent);
+
+  myGreenHouse1.login();
+  myGreenHouse2.login();
+  myGreenHouse3.login();
+  myGreenHouse4.login();
 }
 unsigned long messageTimestamp = 0;
 void loop() {
@@ -323,11 +379,11 @@ void loop() {
     int greenhouseIndex = random(0, 4);
     if (greenhouseIndex == 0) {
       myGreenHouse1.sendAlarmingData();
-    } else if (greenhouseIndex == 1){
+    } else if (greenhouseIndex == 1) {
       myGreenHouse2.sendAlarmingData();
-    }else if (greenhouseIndex == 2){
+    } else if (greenhouseIndex == 2) {
       myGreenHouse3.sendAlarmingData();
-    }else{
+    } else {
       myGreenHouse4.sendAlarmingData();
     }
 
