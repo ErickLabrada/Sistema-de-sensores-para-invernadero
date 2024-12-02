@@ -9,6 +9,8 @@ import { GreenHouseDTO } from './DTOs/greenhouse.dto';
 import { CheckAlarmDTO } from 'src/alarms/dtos/check-alarm.dto';
 import { WsJwtGuard } from 'src/auth/ws-jst/ws-jst.guard';
 import { SocketAuthMiddleware } from 'src/auth/websocket.middleware';
+import { PersistDataDTO } from 'src/data/dto/persist-data.dto';
+import { SendDataDTO } from 'src/alarms/dtos/send-data.dto';
 @Injectable()
 @WebSocketGateway(80, { cors: { origin: '*' }})
 @UseGuards(WsJwtGuard)
@@ -50,16 +52,27 @@ Server: Server
         alarmDTO.data=data.GreenHouse.Sensor.Section.Data
         alarmDTO.identifier=data.GreenHouse.Sensor.Section.Name
         alarmDTO.section=data.GreenHouse.Identifier
+
         //console.log("AAAAAAAAAAAAAA")
         //console.log(data.GreenHouse.Sensor.Section.Data)
         //console.log(alarmDTO)
+
         this.alarmService.checkThresholds(alarmDTO);
-        //this.dataService.persist();
+        let persisDataDto= new PersistDataDTO()
+        persisDataDto.identifier=alarmDTO.identifier
+        persisDataDto.name=alarmDTO.section
+        let sendDataDto = new SendDataDTO()
+        sendDataDto.humidity=alarmDTO.data.Humidity
+        sendDataDto.temperature=alarmDTO.data.Temperature
+        persisDataDto.data=sendDataDto
+        console.log("aaaaaaaaaaaaaaaaaaaaaaaaaa")
+        console.log(JSON.stringify(persisDataDto))
+        this.dataService.persistData(persisDataDto);
     }
 
     private standarizeFormat(data:string){
-        //console.log("standarizing")
-        //console.log(data)
+        console.log("standarizing")
+        console.log(data)
         if(this.isJson(data)){
             return JSON.parse(data);
         }else
