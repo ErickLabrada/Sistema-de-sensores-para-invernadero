@@ -67,6 +67,14 @@ export class GreenhouseService {
         });
     }
 
+    async getGreenhouseByIdentifier(identifier: string){
+        console.log(identifier)
+        const greenhouse = await this.greenhouseRepository.findOne({
+            where:{identifier:identifier}
+        })
+        return greenhouse
+    }
+
     async getGreenhouse(id: number) {
         const greenhouse = await this.greenhouseRepository.findOne({
             where: { id },
