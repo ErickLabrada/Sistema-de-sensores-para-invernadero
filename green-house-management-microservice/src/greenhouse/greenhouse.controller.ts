@@ -8,7 +8,7 @@ import { CreateGreenhouseDTO } from 'src/dtos/greenhouse/create-greenhouse.dto';
 export class GreenhouseController {
     constructor(private greenhouseService: GreenhouseService) {}
 
-    @MessagePattern("create-greenhouse")
+  @MessagePattern("create-greenhouse")
   async createGreenhouse(@Payload() greenHouse: CreateGreenhouseDTO){
       return this.greenhouseService.createGreenhouse(greenHouse)
   }
